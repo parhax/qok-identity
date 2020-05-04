@@ -1,0 +1,22 @@
+version: "3"
+
+services:
+  qok-identity-http:
+    build: .  
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+    volumes: 
+      - '.:/build'
+    depends_on:
+      - mongodb
+    ports:
+      - 8585:8585
+
+  mongodb:
+    image: mongo
+    container_name: qok_identity_mongodb
+    volumes: 
+        - ../mongo-volume:/data/db
+    ports:
+        - 27018:27017
+   
