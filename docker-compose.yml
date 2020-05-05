@@ -15,8 +15,8 @@ services:
   mongodb:
     image: mongo
     container_name: qok_identity_mongodb
-    volumes: 
-        - ../mongo-volume:/data/db
+    # volumes: 
+    #     - ../mongo-volume:/data/db
     ports:
         - 27018:27017
    
