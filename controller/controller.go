@@ -6,7 +6,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"qok.com/identity/config/db"
+	"qok.com/identity/db"
 	"qok.com/identity/model"
 
 	"fmt"
