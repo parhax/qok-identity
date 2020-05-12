@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	"qok.com/identity/db"
+	"qok.com/identity/logwrapper"
 	"qok.com/identity/model"
 
 	"fmt"
@@ -18,21 +19,20 @@ import (
 )
 
 func RegisterHandler(w http.ResponseWriter, req *http.Request) {
-	fmt.Printf("inserted in registerHandler Method")
+	logger := logwrapper.Load()
 	w.Header().Set("Content-Type", "application/json")
 
 	body, ioerr := ioutil.ReadAll(req.Body)
 	if ioerr != nil {
-		log.Fatal("could not read from io")
+		logger.Fatal("could not read from io")
 		return
 	}
-	var user model.User
-	err := json.Unmarshal(body, &user)
-
 	var response model.ResponseResult
+	var user model.User
 
+	err := json.Unmarshal(body, &user)
 	if err != nil {
-		fmt.Printf("error in umarshalling")
+		logger.Printf("error in umarshalling")
 		response.Error = err.Error()
 		json.NewEncoder(w).Encode(response)
 		return
@@ -41,7 +41,7 @@ func RegisterHandler(w http.ResponseWriter, req *http.Request) {
 	collection, err := db.GetDBCollection()
 
 	if err != nil {
-		fmt.Printf("error in connecting to DB")
+		logger.Printf("error in connecting to DB")
 		response.Error = err.Error()
 		json.NewEncoder(w).Encode(response)
 		return
@@ -86,6 +86,7 @@ func RegisterHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func LoginHandler(w http.ResponseWriter, req *http.Request) {
+	logger := logwrapper.Load()
 	w.Header().Set("Content-Type", "application/json")
 
 	body, _ := ioutil.ReadAll(req.Body)
@@ -110,6 +111,7 @@ func LoginHandler(w http.ResponseWriter, req *http.Request) {
 	db_find_error := collection.FindOne(context.TODO(), bson.D{{"username", user.Username}}).Decode(&userObjectForResponse)
 
 	if db_find_error != nil {
+		logger.Printf("Invalid username : %q", user.Username)
 		res.Error = "Invalid username"
 		json.NewEncoder(w).Encode(res)
 		return
@@ -118,7 +120,8 @@ func LoginHandler(w http.ResponseWriter, req *http.Request) {
 	password_error := bcrypt.CompareHashAndPassword([]byte(userObjectForResponse.Password), []byte(user.Password))
 
 	if password_error != nil {
-		res.Error = "Invalid password"
+		logger.Printf("Password not match for username: %q", user.Username)
+		res.Error = "Password does not match"
 		json.NewEncoder(w).Encode(res)
 		return
 	}
@@ -129,6 +132,7 @@ func LoginHandler(w http.ResponseWriter, req *http.Request) {
 
 	tokenString, err := token.SignedString([]byte("secret"))
 	if err != nil {
+		logger.Printf("error on generating the token")
 		res.Error = "Error while generating token,Try again"
 		json.NewEncoder(w).Encode(res)
 		return
@@ -142,11 +146,13 @@ func LoginHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 func UserInfoHandler(w http.ResponseWriter, req *http.Request) {
+	logger := logwrapper.Load()
 	w.Header().Set("Content-Type", "application/json")
 	tokenString := req.Header.Get("Authorization")
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
+			logger.Fatal("Unexpected signing method")
 			return nil, fmt.Errorf("Unexpected signing method")
 		}
 		return []byte("secret"), nil
