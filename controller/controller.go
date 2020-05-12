@@ -21,8 +21,11 @@ func RegisterHandler(w http.ResponseWriter, req *http.Request) {
 	fmt.Printf("inserted in registerHandler Method")
 	w.Header().Set("Content-Type", "application/json")
 
-	body, _ := ioutil.ReadAll(req.Body)
-	// fmt.Printf("%#v", body)
+	body, ioerr := ioutil.ReadAll(req.Body)
+	if ioerr != nil {
+		log.Fatal("could not read from io")
+		return
+	}
 	var user model.User
 	err := json.Unmarshal(body, &user)
 
