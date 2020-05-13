@@ -5,8 +5,6 @@ import (
 	"os"
 )
 
-var logger *log.Logger
-
 //Load retrun a signleton of the logger
 func Load() *log.Logger {
 	f, err := os.OpenFile("identity.log",
@@ -15,6 +13,6 @@ func Load() *log.Logger {
 		log.Println(err)
 	}
 
-	logger = log.New(f, "Identity :: ", log.LstdFlags)
-	return logger
+	return log.New(f, "Identity :: ", log.LstdFlags)
+
 }
