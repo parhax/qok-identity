@@ -19,43 +19,43 @@ import (
 func RegisterHandler(w http.ResponseWriter, req *http.Request) {
 	logger := logwrapper.Load()
 	w.Header().Set("Content-Type", "application/json")
-	var response model.ResponseResult
+	var responseObj model.ResponseResult
 	var user model.User
 
 	body, ioerr := ioutil.ReadAll(req.Body)
 	if ioerr != nil {
-		logger.Fatal(ioerr.Error())
-		response.Error = ioerr.Error()
-		json.NewEncoder(w).Encode(response)
+		logger.Println(ioerr.Error())
+		responseObj.Error = ioerr.Error()
+		json.NewEncoder(w).Encode(responseObj)
 		return
 	}
 
 	err := json.Unmarshal(body, &user)
 	if err != nil {
 		logger.Printf("error in umarshalling : %v", err.Error())
-		response.Error = err.Error()
-		json.NewEncoder(w).Encode(response)
+		responseObj.Error = err.Error()
+		json.NewEncoder(w).Encode(responseObj)
 		return
 	}
 
 	_, findErr := userrepository.FindOne(user.Username)
 
 	if findErr == nil {
-		response.Result = fmt.Sprintf("Username : %q  already Exists!!", user.Username)
-		json.NewEncoder(w).Encode(response)
+		responseObj.Result = fmt.Sprintf("Username : %q  already Exists!!", user.Username)
+		json.NewEncoder(w).Encode(responseObj)
 		return
 	}
 
 	if findErr.Error() == "mongo: no documents in result" {
 		err := userrepository.Store(user)
 		if err != nil {
-			response.Error = err.Error()
-			json.NewEncoder(w).Encode(response)
+			responseObj.Error = err.Error()
+			json.NewEncoder(w).Encode(responseObj)
 			return
 		}
 		//LAST STATE WHICH NOTHING WENT WRONG
-		response.Result = "Successfuly Registered"
-		json.NewEncoder(w).Encode(response)
+		responseObj.Result = "Successfuly Registered"
+		json.NewEncoder(w).Encode(responseObj)
 	}
 
 }
