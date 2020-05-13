@@ -1,19 +1,17 @@
 package controller
 
 import (
-	"context"
 	"encoding/json"
 	"io/ioutil"
 	"net/http"
 
-	"qok.com/identity/db"
 	"qok.com/identity/logwrapper"
 	"qok.com/identity/model"
+	"qok.com/identity/userrepository"
 
 	"fmt"
 
 	jwt "github.com/dgrijalva/jwt-go"
-	"go.mongodb.org/mongo-driver/bson"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -34,56 +32,31 @@ func RegisterHandler(w http.ResponseWriter, req *http.Request) {
 
 	err := json.Unmarshal(body, &user)
 	if err != nil {
-		logger.Printf("error in umarshalling")
+		logger.Printf("error in umarshalling : %v", err.Error())
 		response.Error = err.Error()
 		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	collection, err := db.GetDBCollection()
+	_, findErr := userrepository.FindOne(user.Username)
 
-	if err != nil {
-		logger.Printf("error in connecting to DB")
-		response.Error = err.Error()
+	if findErr == nil {
+		response.Result = fmt.Sprintf("Username : %q  already Exists!!", user.Username)
 		json.NewEncoder(w).Encode(response)
 		return
 	}
 
-	// var queryResult model.User
-
-	// err = collection.FindOne(context.TODO(), bson.D{{"username", user.Username}}).Decode(&queryResult)
-	// if err == nil {
-	// 	response.Result = "Username already Exists!!"
-	// 	json.NewEncoder(w).Encode(response)
-	// 	return
-	// }
-
-	if err.Error() == "mongo: no documents in result" {
-		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), 5)
+	if findErr.Error() == "mongo: no documents in result" {
+		err := userrepository.Store(user)
 		if err != nil {
-			response.Error = "Error While Hashing Password, Try Again"
+			response.Error = err.Error()
 			json.NewEncoder(w).Encode(response)
 			return
 		}
-
-		user.Password = string(hash)
-
-		_, err = collection.InsertOne(context.TODO(), user)
-
-		if err != nil {
-			response.Error = "Error while inserting to DB, try again"
-			json.NewEncoder(w).Encode(response)
-			return
-		}
-
 		//LAST STATE WHICH NOTHING WENT WRONG
 		response.Result = "Successfuly Registered"
-
 		json.NewEncoder(w).Encode(response)
-
 	}
-	response.Error = err.Error()
-	json.NewEncoder(w).Encode(response)
 
 }
 
@@ -99,27 +72,18 @@ func LoginHandler(w http.ResponseWriter, req *http.Request) {
 	}
 
 	var user model.User
-
 	err := json.Unmarshal(body, &user)
-
 	if err != nil {
 		logger.Fatal(err)
-	}
-
-	collection, dbConError := db.GetDBCollection()
-
-	if dbConError != nil {
-		logger.Fatal(dbConError)
 	}
 
 	var userObjectForResponse model.User
 	var res model.ResponseResult
 
-	dbFindError := collection.FindOne(context.TODO(), bson.D{{"username", user.Username}}).Decode(&userObjectForResponse)
-
+	userObjectForResponse, dbFindError := userrepository.FindOne(user.Username)
 	if dbFindError != nil {
 		logger.Printf("Invalid username : %q", user.Username)
-		res.Error = "Invalid username"
+		res.Error = fmt.Sprintf("Invalid username : %v", user.Username)
 		json.NewEncoder(w).Encode(res)
 		return
 	}
