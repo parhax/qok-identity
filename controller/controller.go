@@ -11,7 +11,6 @@ import (
 	"qok.com/identity/model"
 
 	"fmt"
-	"log"
 
 	jwt "github.com/dgrijalva/jwt-go"
 	"go.mongodb.org/mongo-driver/bson"
@@ -89,20 +88,24 @@ func LoginHandler(w http.ResponseWriter, req *http.Request) {
 	logger := logwrapper.Load()
 	w.Header().Set("Content-Type", "application/json")
 
-	body, _ := ioutil.ReadAll(req.Body)
+	body, readErr := ioutil.ReadAll(req.Body)
+
+	if readErr != nil {
+		logger.Fatalf("error in reading io : %v", readErr)
+	}
 
 	var user model.User
 
 	err := json.Unmarshal(body, &user)
 
 	if err != nil {
-		log.Fatal(err)
+		logger.Fatal(err)
 	}
 
 	collection, db_connection_error := db.GetDBCollection()
 
 	if db_connection_error != nil {
-		log.Fatal(db_connection_error)
+		logger.Fatal(db_connection_error)
 	}
 
 	var userObjectForResponse model.User
@@ -153,7 +156,7 @@ func UserInfoHandler(w http.ResponseWriter, req *http.Request) {
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (interface{}, error) {
 		if _, ok := token.Method.(*jwt.SigningMethodHMAC); !ok {
 			logger.Fatal("Unexpected signing method")
-			return nil, fmt.Errorf("Unexpected signing method")
+			return nil, fmt.Errorf("Unexpected signing method %v", ok)
 		}
 		return []byte("secret"), nil
 	})
