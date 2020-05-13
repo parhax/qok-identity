@@ -17,17 +17,20 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
+//RegisterHandler is a http Handler for /register  route
 func RegisterHandler(w http.ResponseWriter, req *http.Request) {
 	logger := logwrapper.Load()
 	w.Header().Set("Content-Type", "application/json")
+	var response model.ResponseResult
+	var user model.User
 
 	body, ioerr := ioutil.ReadAll(req.Body)
 	if ioerr != nil {
-		logger.Fatal("could not read from io")
+		logger.Fatal(ioerr.Error())
+		response.Error = ioerr.Error()
+		json.NewEncoder(w).Encode(response)
 		return
 	}
-	var response model.ResponseResult
-	var user model.User
 
 	err := json.Unmarshal(body, &user)
 	if err != nil {
@@ -46,14 +49,14 @@ func RegisterHandler(w http.ResponseWriter, req *http.Request) {
 		return
 	}
 
-	var queryResult model.User
+	// var queryResult model.User
 
-	err = collection.FindOne(context.TODO(), bson.D{{"username", user.Username}}).Decode(&queryResult)
-	if err == nil {
-		response.Result = "Username already Exists!!"
-		json.NewEncoder(w).Encode(response)
-		return
-	}
+	// err = collection.FindOne(context.TODO(), bson.D{{"username", user.Username}}).Decode(&queryResult)
+	// if err == nil {
+	// 	response.Result = "Username already Exists!!"
+	// 	json.NewEncoder(w).Encode(response)
+	// 	return
+	// }
 
 	if err.Error() == "mongo: no documents in result" {
 		hash, err := bcrypt.GenerateFromPassword([]byte(user.Password), 5)
@@ -84,6 +87,7 @@ func RegisterHandler(w http.ResponseWriter, req *http.Request) {
 
 }
 
+// LoginHandler is a http handler for /login  route
 func LoginHandler(w http.ResponseWriter, req *http.Request) {
 	logger := logwrapper.Load()
 	w.Header().Set("Content-Type", "application/json")
@@ -102,27 +106,27 @@ func LoginHandler(w http.ResponseWriter, req *http.Request) {
 		logger.Fatal(err)
 	}
 
-	collection, db_connection_error := db.GetDBCollection()
+	collection, dbConError := db.GetDBCollection()
 
-	if db_connection_error != nil {
-		logger.Fatal(db_connection_error)
+	if dbConError != nil {
+		logger.Fatal(dbConError)
 	}
 
 	var userObjectForResponse model.User
 	var res model.ResponseResult
 
-	db_find_error := collection.FindOne(context.TODO(), bson.D{{"username", user.Username}}).Decode(&userObjectForResponse)
+	dbFindError := collection.FindOne(context.TODO(), bson.D{{"username", user.Username}}).Decode(&userObjectForResponse)
 
-	if db_find_error != nil {
+	if dbFindError != nil {
 		logger.Printf("Invalid username : %q", user.Username)
 		res.Error = "Invalid username"
 		json.NewEncoder(w).Encode(res)
 		return
 	}
 
-	password_error := bcrypt.CompareHashAndPassword([]byte(userObjectForResponse.Password), []byte(user.Password))
+	passwordError := bcrypt.CompareHashAndPassword([]byte(userObjectForResponse.Password), []byte(user.Password))
 
-	if password_error != nil {
+	if passwordError != nil {
 		logger.Printf("Password not match for username: %q", user.Username)
 		res.Error = "Password does not match"
 		json.NewEncoder(w).Encode(res)
@@ -148,6 +152,7 @@ func LoginHandler(w http.ResponseWriter, req *http.Request) {
 
 }
 
+// UserInfoHandler is a http handler for /user_info route
 func UserInfoHandler(w http.ResponseWriter, req *http.Request) {
 	logger := logwrapper.Load()
 	w.Header().Set("Content-Type", "application/json")
