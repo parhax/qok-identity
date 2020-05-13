@@ -1,25 +1,10 @@
 package main
 
 import (
-	"log"
-	"net/http"
-
-	"qok.com/identity/controller"
-
-	"github.com/gorilla/mux"
+	"qok.com/identity/config"
+	"qok.com/identity/router/httprouter"
 )
 
 func main() {
-	r := mux.NewRouter()
-
-	r.HandleFunc("/register", controller.RegisterHandler).
-		Methods("POST")
-
-	r.HandleFunc("/login", controller.LoginHandler).
-		Methods("POST")
-
-	r.HandleFunc("/user_info", controller.UserInfoHandler).
-		Methods("GET")
-
-	log.Fatal(http.ListenAndServe(":8585", r))
+	httprouter.Run(config.Load().Http_port)
 }
