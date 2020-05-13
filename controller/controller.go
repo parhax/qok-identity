@@ -130,16 +130,19 @@ func UserInfoHandler(w http.ResponseWriter, req *http.Request) {
 		return []byte("secret"), nil
 	})
 
-	var userResponseObject model.User
-	var res model.ResponseResult
-
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		userResponseObject.Username = claims["username"].(string)
+		userResponseObject := model.User{
+			Username: claims["username"].(string),
+			Token:    tokenString,
+		}
 		json.NewEncoder(w).Encode(userResponseObject)
 		return
-	} else {
-		res.Error = err.Error()
-		json.NewEncoder(w).Encode(res)
-		return
 	}
+
+	res := model.ResponseResult{
+		Error: err.Error(),
+	}
+	json.NewEncoder(w).Encode(res)
+	return
+
 }
